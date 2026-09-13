@@ -115,3 +115,7 @@ operator-lab/
 ```bash
 python3 backend/selftest.py   # 校验符号解析 / FFT 卷积 / 分解 / 生成族
 ```
+
+## 许可
+
+本项目采用 [MIT License](LICENSE)。
