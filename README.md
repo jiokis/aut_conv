@@ -1,5 +1,7 @@
 # 算子生成与分析工作台 · Operator Lagrangian Lab
 
+> GitHub: <https://github.com/jiokis/aut_conv>
+
 把 DeepSeek 分享对话《卷积算子的等变性与拉氏函数》(分享链接内 14 轮推导:
 拉格朗日可导出性 ⇔ 自伴/偶核 → 核方法的一般拉氏量 → 卷积核设计空间
 L1 平移等变 / L2 自伴 / L3 正定 / L4 格林核 / L5 群等变 → 一般核不能由多个
