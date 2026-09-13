@@ -1,0 +1,23 @@
+# 忽略: 数据缓存、密钥、构建产物
+.secrets/
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# MNIST 原始数据与 numpy 缓存(体积大, 首次运行自动下载/生成)
+data/*.gz
+data/*.npy
+data/*.part
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 编辑器/系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

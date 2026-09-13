@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN 手写数字识别 · 算子架构系统性分析</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%88%AB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="logo">
+    <div class="logo-badge">7</div>
+    <h1>手写数字 CNN · 算子架构系统性分析<span class="sub">用「卷积核 × 拉格朗日设计空间」引擎逐层解析 LeNet 式网络</span></h1>
+  </div>
+  <div class="top-right">
+    <span id="cnnStatus" class="top-meta">加载中…</span>
+    <span id="busyDot2" class="busy-dot" title="训练状态"></span>
+    <a class="btn small ghost" href="index.html">⚗ 卷积核实验室</a>
+    <button class="btn small ghost" id="btnTheory2" onclick="document.getElementById('theoryBox2').open=!document.getElementById('theoryBox2').open">📖 解读框架</button>
+  </div>
+</header>
+
+<div class="layout" style="grid-template-columns:minmax(0,1fr);max-width:1500px">
+
+  <!-- ============ 模型 + 手写预测 ============ -->
+  <div class="card">
+    <div class="c-h">
+      <h2>① 模型与手写预测</h2>
+      <span class="tag" id="archTag">28→C8·5×5→P2→C16·5×5→P2→FC120→10</span>
+    </div>
+    <div class="pred-panel">
+      <div class="metrics" style="border-bottom:none;padding:0 0 12px" id="modelMetrics"></div>
+      <div class="draw-row">
+        <div class="board-box">
+          <canvas id="drawBoard" width="280" height="280" title="按住鼠标书写"></canvas>
+          <div class="cap" style="text-align:center">手写数字(白笔黑底, 自动居中)</div>
+        </div>
+        <div class="board-info">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn primary" id="btnPredict">🔍 预测</button>
+            <button class="btn ghost" id="btnClearBoard">清空</button>
+            <span style="flex:1"></span>
+            <canvas id="pixPreview" width="112" height="112" class="mini-pix" style="width:112px;height:112px"></canvas>
+          </div>
+          <div class="big-pred" id="bigPred">—</div>
+          <div class="probs" id="probBars"><div class="empty" style="padding:8px">写一个数字后点「预测」</div></div>
+        </div>
+      </div>
+      <div class="small-txt" style="margin-top:8px">MNIST 灰度 28×28 → 预测软最大分布。模型为真实训练的 CNN(test 准确率见上方指标)。</div>
+    </div>
+    <div class="trainbox">
+      <label>重训(子集/轮数)</label>
+      <select id="trainSubset">
+        <option value="5000">5k · 约20s</option>
+        <option value="15000">15k · 约60s</option>
+        <option value="30000" selected>30k · 约130s</option>
+        <option value="60000">60k · 约260s</option>
+      </select>
+      <input type="number" id="trainEpochs" min="1" max="6" value="3" style="width:70px" title="轮数">
+      <button class="btn" id="btnTrain">🎓 开始训练</button>
+      <span class="small-txt" id="trainHint"></span>
+    </div>
+    <div class="trainlog" id="trainLog" style="display:none"></div>
+  </div>
+
+  <!-- ============ 逐层算子设计空间分析 ============ -->
+  <div class="card">
+    <div class="c-h">
+      <h2>② 逐卷积层算子分析(设计空间: 平移等变 → 自伴/拉氏量 → 正定)</h2>
+      <span class="tag" id="layersTime">—</span>
+    </div>
+    <div class="cnntabs" id="layerTabs">
+      <button class="active" data-l="c1">Conv1 · 8 个 2D 算子</button>
+      <button data-l="c2">Conv2 · 16 输出 × 8 分量 = 128 个 2D 算子</button>
+    </div>
+    <div class="cnntabs" id="frameTabs" style="padding-top:2px">
+      <button class="active" data-f="real" title="实场: 奇部=陀螺(零功), 偶核⇔可导出拉氏量">🔵 实框架(对话主线)</button>
+      <button data-f="cplx" title="复化: ĉ=kₛ−ikₐ 的 Hermitian 算符, 实谱 Re ĥ+Im ĥ —— 任意实核自动对应实值拉氏量">🟣 复场·虚数视角(尝试)</button>
+    </div>
+    <div id="frameExplain" class="small-txt" style="padding:4px 16px 0"></div>
+    <div id="layerAgg"></div>
+    <div class="c-b" id="layerCards"></div>
+  </div>
+
+  <!-- ============ 系统性解读 ============ -->
+  <div class="card">
+    <div class="c-h"><h2>③ 系统性解读(按对话架构)</h2></div>
+    <div class="c-b" id="narration"></div>
+  </div>
+
+  <!-- ============ 定量结论 & 一般设计规则 ============ -->
+  <div class="card">
+    <div class="c-h">
+      <h2>④ 定量结论 &amp; 一般设计规则(受控实验)</h2>
+      <span class="tag"><a href="ANALYSIS_RULES.md" target="_blank" style="color:var(--cyan)">完整报告 ANALYSIS_RULES.md ↗</a></span>
+    </div>
+    <div id="rulesBox"><div class="loading"><div class="spin"></div>实验数据加载中…(运行 python3 backend/exp_rules.py 生成)</div></div>
+  </div>
+
+  <!-- ============ 端到端分类机制解剖 ============ -->
+  <div class="card">
+    <div class="c-h">
+      <h2>⑤ 端到端分类机制 · 定量解剖(它是怎么“分出来”的)</h2>
+      <span class="tag" id="mechTag">backend/mech.py · 推理期测量</span>
+    </div>
+    <div id="mechBox"><div class="loading"><div class="spin"></div>机制数据加载中…(运行 python3 backend/mech.py 生成)</div></div>
+  </div>
+
+  <details class="theory" id="theoryBox2">
+    <summary>解读框架 —— 用「算子×拉氏量」架构看 CNN 卷积层</summary>
+    <div class="theory-body">
+      <div class="tb"><span class="t">卷积层 = 平移等变算子族(L1)</span>
+        每个输出通道 = 一个卷积算子(深度学习用互相关, 无翻转; 其转置/回传算子 = 翻转核)。
+        全部滤波器自动满足 L1 平移等变, 但几乎都不是偶核。</div>
+      <div class="tb"><span class="t">自伴 ⇔ 偶核(L2): CNN 过滤器几乎总不满足</span>
+        可导出二次拉氏量 ⇔ k(x)=k(−x)。训练的滤波器是偶部(自伴: 平滑/对称增强)+
+        奇部(反自伴: 差分/方向)混合, 奇部在实框架下是<b>陀螺/方向项</b>(⟨u,Au⟩=0,
+        破时间反演) —— 这正是边缘、笔画检测的本质。</div>
+      <div class="tb"><span class="t">正定锥(L3): 几乎没有卷积滤波器 PSD</span>
+        Re Ĥ 变号 ⇒ 非凸、有负能量模式。CNN 的"特征检测"因此不能解释为能量极小化,
+        而是方向敏感的过零/差分测量; 正则化(weight decay)才对应参数空间的二次势能。</div>
+      <div class="tb"><span class="t">谱三分: 势能/陀螺/耗散 + 逐层综合</span>
+        每滤波器的 偶部+正谱 → 平滑/势能型; 奇部 → 陀螺/方向型; 负谱 → 需 Rayleigh 耗散
+        解释。逐层统计(奇部占比、朝向分布、频带)给出"网络学到了什么算子"。</div>
+    </div>
+  </details>
+</div>
+
+<div class="toast" id="toast2"></div>
+<script src="cnn.js"></script>
+</body>
+</html>

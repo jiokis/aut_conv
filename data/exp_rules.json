@@ -1,0 +1,260 @@
+{
+ "config": {
+  "subset": 15000,
+  "epochs": 2,
+  "lr": 0.002,
+  "acc_base_seed7": 0.9728
+ },
+ "modes": [
+  {
+   "mode": "none",
+   "test_acc": 0.9728,
+   "secs": 90.0,
+   "stats": {
+    "conv1": {
+     "n": 8,
+     "mean_even": 0.4762,
+     "mean_odd": 0.5238,
+     "psd": 0,
+     "directional": 5,
+     "odd_heavy": 4,
+     "orient_R": 0.2635,
+     "odd_min": 0.403,
+     "odd_max": 0.663
+    },
+    "conv2": {
+     "n": 128,
+     "mean_even": 0.5165,
+     "mean_odd": 0.4835,
+     "psd": 0,
+     "directional": 84,
+     "odd_heavy": 63,
+     "orient_R": 0.284,
+     "odd_min": 0.073,
+     "odd_max": 0.807
+    }
+   }
+  },
+  {
+   "mode": "even",
+   "test_acc": 0.9734,
+   "secs": 94.9,
+   "stats": {
+    "conv1": {
+     "n": 8,
+     "mean_even": 1.0,
+     "mean_odd": 0.0,
+     "psd": 0,
+     "directional": 5,
+     "odd_heavy": 0,
+     "orient_R": null,
+     "odd_min": 0.0,
+     "odd_max": 0.0
+    },
+    "conv2": {
+     "n": 128,
+     "mean_even": 1.0,
+     "mean_odd": 0.0,
+     "psd": 0,
+     "directional": 76,
+     "odd_heavy": 0,
+     "orient_R": null,
+     "odd_min": 0.0,
+     "odd_max": 0.0
+    }
+   }
+  },
+  {
+   "mode": "odd",
+   "test_acc": 0.9721,
+   "secs": 86.5,
+   "stats": {
+    "conv1": {
+     "n": 8,
+     "mean_even": 0.0,
+     "mean_odd": 1.0,
+     "psd": 0,
+     "directional": 8,
+     "odd_heavy": 8,
+     "orient_R": 0.4764,
+     "odd_min": 1.0,
+     "odd_max": 1.0
+    },
+    "conv2": {
+     "n": 128,
+     "mean_even": 0.0,
+     "mean_odd": 1.0,
+     "psd": 0,
+     "directional": 128,
+     "odd_heavy": 128,
+     "orient_R": 0.1037,
+     "odd_min": 1.0,
+     "odd_max": 1.0
+    }
+   }
+  }
+ ],
+ "seeds": [
+  {
+   "seed": 101,
+   "test_acc": 0.9622,
+   "stats": {
+    "conv1": {
+     "n": 8,
+     "mean_even": 0.5931,
+     "mean_odd": 0.4069,
+     "psd": 0,
+     "directional": 6,
+     "odd_heavy": 4,
+     "orient_R": 0.6608,
+     "odd_min": 0.188,
+     "odd_max": 0.64
+    },
+    "conv2": {
+     "n": 128,
+     "mean_even": 0.5093,
+     "mean_odd": 0.4907,
+     "psd": 0,
+     "directional": 91,
+     "odd_heavy": 61,
+     "orient_R": 0.1552,
+     "odd_min": 0.178,
+     "odd_max": 0.803
+    }
+   },
+   "secs": 92.1
+  },
+  {
+   "seed": 202,
+   "test_acc": 0.9734,
+   "stats": {
+    "conv1": {
+     "n": 8,
+     "mean_even": 0.566,
+     "mean_odd": 0.434,
+     "psd": 0,
+     "directional": 5,
+     "odd_heavy": 4,
+     "orient_R": 0.4813,
+     "odd_min": 0.209,
+     "odd_max": 0.701
+    },
+    "conv2": {
+     "n": 128,
+     "mean_even": 0.5247,
+     "mean_odd": 0.4753,
+     "psd": 0,
+     "directional": 76,
+     "odd_heavy": 61,
+     "orient_R": 0.2022,
+     "odd_min": 0.093,
+     "odd_max": 0.799
+    }
+   },
+   "secs": 85.8
+  },
+  {
+   "seed": 303,
+   "test_acc": 0.9766,
+   "stats": {
+    "conv1": {
+     "n": 8,
+     "mean_even": 0.4028,
+     "mean_odd": 0.5972,
+     "psd": 0,
+     "directional": 6,
+     "odd_heavy": 6,
+     "orient_R": 0.1209,
+     "odd_min": 0.322,
+     "odd_max": 0.727
+    },
+    "conv2": {
+     "n": 128,
+     "mean_even": 0.515,
+     "mean_odd": 0.485,
+     "psd": 0,
+     "directional": 78,
+     "odd_heavy": 65,
+     "orient_R": 0.1641,
+     "odd_min": 0.142,
+     "odd_max": 0.851
+    }
+   },
+   "secs": 88.0
+  }
+ ],
+ "agg_seeds_conv1": {
+  "mean_odd": {
+   "mean": 0.4794,
+   "lo": 0.4069,
+   "hi": 0.5972
+  },
+  "mean_even": {
+   "mean": 0.5206,
+   "lo": 0.4028,
+   "hi": 0.5931
+  },
+  "psd": {
+   "mean": 0.0,
+   "lo": 0,
+   "hi": 0
+  },
+  "directional": {
+   "mean": 5.6667,
+   "lo": 5,
+   "hi": 6
+  },
+  "odd_heavy": {
+   "mean": 4.6667,
+   "lo": 4,
+   "hi": 6
+  },
+  "n": {
+   "mean": 8.0,
+   "lo": 8,
+   "hi": 8
+  },
+  "orient_R": {
+   "mean": 0.421,
+   "lo": 0.1209,
+   "hi": 0.6608
+  }
+ },
+ "agg_seeds_conv2": {
+  "mean_odd": {
+   "mean": 0.4837,
+   "lo": 0.4753,
+   "hi": 0.4907
+  },
+  "mean_even": {
+   "mean": 0.5163,
+   "lo": 0.5093,
+   "hi": 0.5247
+  },
+  "psd": {
+   "mean": 0.0,
+   "lo": 0,
+   "hi": 0
+  },
+  "directional": {
+   "mean": 81.6667,
+   "lo": 76,
+   "hi": 91
+  },
+  "odd_heavy": {
+   "mean": 62.3333,
+   "lo": 61,
+   "hi": 65
+  },
+  "n": {
+   "mean": 128.0,
+   "lo": 128,
+   "hi": 128
+  },
+  "orient_R": {
+   "mean": 0.1738,
+   "lo": 0.1552,
+   "hi": 0.2022
+  }
+ }
+}

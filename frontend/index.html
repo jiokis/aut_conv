@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>算子生成与分析工作台 · Operator Lagrangian Lab</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%88%AB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="logo">
+    <div class="logo-badge">k*u</div>
+    <h1>算子生成与分析工作台<span class="sub">卷积核 × 拉格朗日设计空间 — 源自 DeepSeek 分享对话</span></h1>
+  </div>
+  <div class="top-right">
+    <a class="btn small ghost" href="cnn.html">🧠 CNN 手写数字分析</a>
+    <span id="busyDot" class="busy-dot" title="空闲"></span>
+    <span id="engineMeta" class="top-meta">引擎未连接</span>
+    <button class="btn small" id="btnExport">⬇ 导出 JSON</button>
+    <button class="btn small ghost" id="btnTheory" onclick="document.getElementById('theoryBox').open=!document.getElementById('theoryBox').open">📖 理论速查</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ================= 左侧：算子输入 / 生成 ================= -->
+  <div class="left-col">
+    <div class="card">
+      <div class="tabs" id="genTabs">
+        <button data-tab="tabEdit" class="active">✏️ 手绘</button>
+        <button data-tab="tabPreset">📦 预置</button>
+        <button data-tab="tabParam">🧬 参数化族</button>
+        <button data-tab="tabRandom">🎲 随机生成</button>
+      </div>
+
+      <!-- 手绘编辑 -->
+      <div class="tab-pane active" id="tabEdit">
+        <div class="row">
+          <label>尺寸</label>
+          <input type="range" id="szSlider" min="3" max="15" step="2" value="3">
+          <span class="val-out" id="szOut">3×3</span>
+          <button class="btn small ghost" id="btnClear" style="margin-left:auto">清空</button>
+          <button class="btn small ghost" id="btnSym" title="取偶部: k(x)+k(-x)">取偶部</button>
+          <button class="btn small ghost" id="btnAnti" title="取奇部(陀螺): k(x)-k(-x)">取奇部</button>
+        </div>
+        <div class="paint-row">
+          <span class="cap">笔值:</span>
+          <button class="btn chip sel" data-v="0">0</button>
+          <button class="btn chip" data-v="1">+1</button>
+          <button class="btn chip" data-v="-1">−1</button>
+          <button class="btn chip" data-v="2">+2</button>
+          <button class="btn chip" data-v="-2">−2</button>
+          <span class="cap" style="margin-left:8px">(点击单元格填笔值)</span>
+        </div>
+        <div class="editor-wrap"><table class="kgrid" id="kgrid"></table></div>
+        <div class="small-txt">中心格带青色高亮(坐标原点); 绿=正 / 红=负。</div>
+        <div class="row" style="margin-top:10px">
+          <textarea class="kjson" id="kjson" spellcheck="false" placeholder='["0,1,0;1,0,1;0,1,0"] 或 JSON 二维数组，导入当前核'></textarea>
+        </div>
+        <div class="row">
+          <button class="btn small" id="btnImp">⬆ 导入</button>
+          <button class="btn small" id="btnCpy">⬇ 复制核</button>
+          <button class="btn primary grow" id="btnRun" style="justify-content:center">▶ 运行完整分析</button>
+        </div>
+      </div>
+
+      <!-- 预置 -->
+      <div class="tab-pane" id="tabPreset">
+        <div class="preset-grid" id="presetGrid"></div>
+      </div>
+
+      <!-- 参数化族 -->
+      <div class="tab-pane" id="tabParam">
+        <div class="row">
+          <label>族</label>
+          <select id="famSel" style="flex:1">
+            <option value="gaussian">高斯 exp(−r²/2σ²)</option>
+            <option value="exponential">指数(Yukawa) exp(−r/λ)</option>
+            <option value="box">支撑窗(圆盘)</option>
+            <option value="heat">热核(符号 e^{−t|ω|²})</option>
+            <option value="rational">有理符号 (1+a|ω|²)^{−p}</option>
+          </select>
+        </div>
+        <div class="row" id="famParams"></div>
+        <div class="row">
+          <label>尺寸</label>
+          <input type="range" id="famSize" min="3" max="15" step="2" value="7">
+          <span class="val-out" id="famSizeOut">7</span>
+          <button class="btn primary" id="btnFamGen" style="margin-left:auto">生成并分析</button>
+        </div>
+        <div class="fam-note" id="famNote">选择核族并点击生成。符号族核经大格点 IDFT 采样 → 中心窗口裁切。</div>
+      </div>
+
+      <!-- 随机 -->
+      <div class="tab-pane" id="tabRandom">
+        <div class="row">
+          <label>类别</label>
+          <select id="randKind" style="flex:1">
+            <option value="general">一般核 (L1, 平移等变)</option>
+            <option value="even">偶核 (L2, 自伴→可导拉氏量)</option>
+            <option value="odd">奇核 (反自伴, 陀螺)</option>
+            <option value="psd">正定核 (L3, 凸能量)</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>尺寸</label>
+          <input type="range" id="randSize" min="3" max="13" step="2" value="5">
+          <span class="val-out" id="randSizeOut">5</span>
+        </div>
+        <div class="row">
+          <label>种子</label>
+          <input type="text" id="randSeed" style="width:90px" placeholder="留空=随机">
+          <button class="btn" id="btnRand" style="margin-left:auto">🎲 生成并分析</button>
+        </div>
+        <div class="small-txt" style="margin-top:6px">PSD 类: 随机偶核 + 中心抬升 δ 使符号非负(自动加常数项)。每次生成即自动分析。</div>
+      </div>
+    </div>
+
+    <!-- 当前核迷你视图 -->
+    <div class="card">
+      <div class="c-h"><h2>当前算子</h2><span class="tag" id="curSizeTag">—</span></div>
+      <div class="c-b" id="curMini"><div class="empty">尚未载入内核</div></div>
+    </div>
+  </div>
+
+  <!-- ================= 右侧：分析报告 ================= -->
+  <div class="right-col">
+    <div class="card" id="reportCard">
+      <div id="reportBody">
+        <div class="empty">
+          <div class="spin" style="margin:0 auto 14px"></div>
+          正在初始化… 请确保后端已启动(python3 backend/main.py)
+        </div>
+      </div>
+    </div>
+
+    <details class="theory" id="theoryBox">
+      <summary>理论速查 —— 对话《卷积算子的等变性与拉氏函数》要点(变分/自伴/谱/能量语义)</summary>
+      <div class="theory-body">
+        <div class="tb"><span class="t">① 变分可导出性 ⇔ 自伴(偶核)</span>
+          卷积算子 A:u→k*u 平移等变。要让 <b>δS/δu = A u</b>, A 须为 L² 自伴 ⇔ 核偶函数 k(x)=k(−x) ⇔ 符号 ĥ(ω)∈ℝ。
+          此时二次泛函 <b>S[u]=½∫u(k*u)dx</b> 变分即得 A u。<b>等变性给形状, 自伴性给可导出性。</b></div>
+        <div class="tb"><span class="t">② 设计空间层级</span>
+          L1 所有卷积核(平移等变) → 加自伴 = L2 偶核(可导出拉氏量) → 加正定 ĥ≥0 = L3 凸能量(核方法/RKHS/协方差)
+          → 加微分结构 = L4 格林核(有理/指数符号, 高阶拉氏量 S=½∫(|u|²+λ²|∇u|²))
+          → 加群作用 = L5 群等变核(旋转等)。每层 ⊆ 上层。</div>
+        <div class="tb"><span class="t">③ 一般核不能由多个拉氏量拼出</span>
+          线性组合保持自伴 ⇒ 只能覆盖偶部。奇部 kₐ(反自伴)是<b>陀螺项</b>: ⟨u,Au⟩=0, 能量守恒但破时间反演;
+          复数化或辅助场/辛结构才能容纳(对话偏好: 保留实数、走耗散路线)。</div>
+        <div class="tb"><span class="t">④ 谱三分为势能 / 陀螺 / 耗散</span>
+          自伴核按符号谱分解: H=H⁺+H⁻。A = A_pot + A_gyro − D:
+          A_pot(符号 H⁺≥0)=势能/恢复力(来自拉氏量 S=½⟨u,A_pot u⟩);
+          A_gyro(奇核)=陀螺, 能量守恒;
+          D(正定偶核, 符号 −H⁻) 经 <b>Rayleigh 耗散函数 R[v]=½⟨v, D*v⟩</b> 进入变分框架。</div>
+        <div class="tb"><span class="t">⑤ 能量判据(梯度流 ∂u/∂t = −A u, E=½‖u‖²)</span>
+          dE/dt = −⟨u, A u⟩: A 正定自伴 → 单调耗散; 负定自伴 → 增长(取负号成耗散);
+          反自伴 → dE/dt=0 相位旋转。探针面板逐个模式给出 ⟨u,Ku⟩ 与 S[u]=½⟨u,Ku⟩, 负值即“负能量模式”。</div>
+        <div class="tb"><span class="t">⑥ 示例: 十字核 [[0,1,0],[1,0,1],[0,1,0]]</span>
+          偶核(D4 对称) ⇒ 可导出拉氏量; 符号 H=2cosω₁+2cosω₂ ∈ [−4,4] ⇒ 非正定/非凸;
+          且 <b>K = Δ₄ + 4δ</b>(离散拉普拉斯+中心冲激)。棋盘模式能量 S&lt;0(对话最终分析的结论)。</div>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
