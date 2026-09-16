@@ -1,0 +1,6 @@
+# MNIST CNN 训练脚本(train_web.py)依赖
+torch>=2.0          # CPU 版即可(torch 2.x)
+numpy>=1.24
+# 可选: 用 torchvision.datasets.MNIST 加载(不装则用仓库内置的 MNIST 下载/解析缓存)
+# torchvision>=0.15
+# 卷积核实验室(纯标准库)不需要以上任何依赖

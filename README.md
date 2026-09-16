@@ -59,6 +59,67 @@ Adam, MNIST 30k×3 轮, **测试准确率 98.0%**), 用同一套算子/拉氏量
   实测“偶核(自伴=拉氏量可导出)约束 +0.06pp / 奇核 −0.07pp、PSD 恒 0、奇偶预算分层规律”;
   完整报告见 `ANALYSIS_RULES.md`。
 
+
+## 训练脚本 + 实时 Web 进度看板(`backend/train_web.py`)
+
+完整的手写数字 CNN 训练脚本(PyTorch), **训练的同时启动 Web 看板**实时展示进度。
+
+```bash
+pip install -r requirements.txt          # torch + numpy(本机已具备, 可跳过)
+python3 backend/train_web.py             # 默认 30000 样本 × 3 轮, 端口 8020
+# 浏览器打开 http://127.0.0.1:8020
+```
+
+常用参数: `--subset 60000 --epochs 3 --batch 128 --lr 2e-3 --dropout 0.25 --port 8020 --out data/cnn_torch.json`
+
+看板实时内容: 损失/验证准确率曲线、epoch/step 进度条与 ETA、**8 张固定测试样本的实时预测**、
+**第一层 8 个 5×5 卷积核热图(随训练演化)**、控制台日志、网络结构与参数量。
+训练结束把权重导出为 `data/*.json`(与演示页、分析页同格式)。
+
+实测(本机 CPU): 60000 样本 × 3 轮仅 **12 秒**, 验证 97.0% / 测试 **98.0%**。
+
+## 演示台(`frontend/demo/index.html`)
+
+**http://127.0.0.1:8017/demo/** — 工业软件风格的卷积神经网络全流程演示:
+
+- **手写面板**(28×28 灰度) + 「确认演示」; 也可一键载入 MNIST 测试样本
+- **逐层前向演示**(8 步): 输入 → 卷积1(卷积核滑窗、逐项相乘、求和 Σ、特征图实时填充)
+  → ReLU+池化1 → 卷积2(多通道分别卷积再求和) → ReLU+池化2 → 展平 784 → FC120+ReLU+Dropout → FC10+Softmax
+- **3D 特征图堆栈**(Canvas 仿射投影, 可拖动旋转/滚轮缩放) + 2D 热图模式
+- **KaTeX 公式**(已本地化到 `frontend/demo/vendor/katex/`, 离线可用)逐步展示每层数学式
+- **概率分布**: 10 类概率条, 显式和 Σp=1
+- **⑤ 拉格朗日算子分析面板**(融合): 8 个第一层卷积核的偶/奇分解、谱范围、PSD 判定与经典算子匹配,
+  并给出 S[u]=½∫u(K*u)、k=kₛ+kₐ、ĥ≥0⇔凸、Rayleigh、复化 Hermitian 等公式
+- **可选 TensorFlow.js 交叉验证**: 同一权重在 TF.js 上重跑并对比概率(实测 max|Δp|≈1e-8)
+
+![训练看板](docs/screenshots/training_board.png)
+![演示台 · 卷积2](docs/screenshots/demo_conv2.png)
+![演示台 · FC120+Dropout](docs/screenshots/demo_fc_dropout.png)
+
+### 三段一致性验证
+纯 JS 前向引擎(演示页) / Python 后端 / TensorFlow.js 使用同一份权重:
+4 个测试样本预测类别 4/4 一致, 最大概率偏差 **1.4e-5**(JS↔Python) 与 **1.2e-8**(JS↔TF.js)。
+
+## 网络结构(CNN)
+
+```
+输入 28×28×1
+ 1 Conv2d  1→8   k=5 s=1 p=2    → 28×28×8    参数 208
+ 2 ReLU
+ 3 MaxPool2d k=2 s=2            → 14×14×8
+ 4 Conv2d  8→16  k=5 s=1 p=2    → 14×14×16   参数 3,216
+ 5 ReLU
+ 6 MaxPool2d k=2 s=2            → 7×7×16
+ 7 Flatten                      → 784
+ 8 Dropout  p=0.25              (训练时; 推理关闭)
+ 9 Linear  784→120                            参数 94,200
+10 ReLU
+11 Dropout  p=0.25
+12 Linear  120→10                             参数 1,210
+13 Softmax                      → 10 类概率(Σ=1)
+```
+共 2 个卷积层(5×5 核)、2 个 2×2 最大池化、2 个全连接层, 可训练参数约 9.9 万。
+
 ## 后端 API(pure Python)
 
 | 端点 | 说明 |
@@ -72,6 +133,10 @@ Adam, MNIST 30k×3 轮, **测试准确率 98.0%**), 用同一套算子/拉氏量
 | `POST /api/cnn/train` / `GET /api/cnn/train_status` | 后台训练 + 进度轮询 |
 | `GET /api/cnn/rules` | 定量实验结论(`data/exp_rules.json`, 由 `backend/exp_rules.py` 生成) |
 | `GET /api/cnn/mech` | 分类机制解剖(`data/mech.json`, 由 `backend/mech.py` 生成) |
+| `GET /api/cnn/arch` | 网络结构定义(训练脚本/演示页共用) |
+| `GET /api/cnn/weights?model=x.json` | 模型权重(供演示页 JS 引擎载入) |
+| `GET /api/cnn/sample?i=N&model=x.json` | MNIST 测试样本 + 真值 + 后端预测 |
+| `GET /demo/index.html` | CNN 演示台页面 |
 | `GET /api/health` | 服务自检(含 `cnn: 是否具备 numpy`) |
 | 静态 `/`、`/cnn.html` | 两个前端页面 |
 

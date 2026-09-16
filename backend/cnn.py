@@ -361,12 +361,17 @@ def save_model(W, report):
 
 
 def load_model():
-    if not os.path.exists(MODEL_PATH):
+    return load_model_file(MODEL_PATH)
+
+
+def load_model_file(path):
+    """读取任意模型 JSON(与 save_model/predict 同格式), 供多模型/演示页使用。"""
+    if not os.path.exists(path):
         return None, None
-    with open(MODEL_PATH, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         obj = json.load(f)
     W = {k: np.asarray(v, dtype=np.float32) for k, v in obj["weights"].items()}
-    return W, obj["report"]
+    return W, obj.get("report")
 
 
 def predict_pixels(pixels, W=None):

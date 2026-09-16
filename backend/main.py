@@ -16,7 +16,7 @@ import threading
 import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kernelmath as km  # noqa: E402
@@ -158,8 +158,48 @@ class Handler(BaseHTTPRequestHandler):
                 with open(fp, "r", encoding="utf-8") as f:
                     return self._send_json({"ok": True, "data": json.load(f)})
             return self._send_json({"ok": False, "error": "mech.json 不存在, 先运行 python3 backend/mech.py"})
+        if path == "/api/cnn/arch":
+            # 网络结构说明(演示页/训练看板共用)
+            try:
+                import train_web as tw
+                return self._send_json({"ok": True, "data": tw.ARCH_DOC})
+            except Exception:  # noqa: BLE001
+                return self._send_error_json("train_web.py 不可用", 503)
+        if path == "/api/cnn/weights":
+            # 模型权重(可选 ?model=xxx.json, 仅允许 data 目录内的 .json)
+            q = parse_qs(urlparse(self.path).query)
+            name = (q.get("model") or ["cnn_mnist.json"])[0]
+            if not name.endswith(".json") or "/" in name or "\\" in name or ".." in name:
+                return self._send_error_json("非法模型名")
+            fp = os.path.join(cnn.DATA_DIR, name) if cnn else None
+            if not fp or not os.path.isfile(fp):
+                return self._send_json({"ok": False, "error": f"{name} 不存在"})
+            with open(fp, "r", encoding="utf-8") as f:
+                return self._send_json({"ok": True, "model": name, "data": json.load(f)})
+        if path == "/api/cnn/sample":
+            # MNIST 测试样本(28×28 + 真值 + 指定模型预测), 供演示页/QA
+            if not CNN_OK:
+                return self._send_error_json("需要 numpy", 503)
+            q = parse_qs(urlparse(self.path).query)
+            i = int((q.get("i") or ["0"])[0])
+            name = (q.get("model") or ["cnn_mnist.json"])[0]
+            if not name.endswith(".json") or "/" in name or "\\" in name or ".." in name:
+                return self._send_error_json("非法模型名")
+            fp = os.path.join(cnn.DATA_DIR, name)
+            if not os.path.isfile(fp):
+                return self._send_json({"ok": False, "error": f"{name} 不存在"})
+            Xtr, Ytr, Xte, Yte = cnn.ensure_mnist()
+            i %= len(Xte)
+            img = Xte[i]
+            W, _ = cnn.load_model_file(fp)
+            probs, pred = cnn.predict_pixels(img.tolist(), W)
+            return self._send_json({"ok": True, "data": {
+                "index": i, "img": cnn.np.round(img.astype(float), 3).tolist(),
+                "true": int(Yte[i]), "pred": pred, "probs": probs, "model": name}})
         # 静态文件(仅限 frontend 目录内)
         rel = "index.html" if path in ("/", "") else path.lstrip("/")
+        if rel.endswith("/"):
+            rel += "index.html"
         fp = os.path.normpath(os.path.join(FRONTEND, rel))
         if not fp.startswith(FRONTEND + os.sep) and fp != os.path.join(FRONTEND, "index.html"):
             return self._send_error_json("forbidden", 403)

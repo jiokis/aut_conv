@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN 手写数字识别演示台 · MNIST</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='80'%3E%E2%88%91%3C/text%3E%3C/svg%3E">
+<!-- KaTeX 与 TensorFlow.js 由 demo.js 动态可选加载(离线自动降级, 不阻塞首屏) -->
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">CNN</div>
+    <div>
+      <h1>手写数字识别 · 卷积神经网络演示台</h1>
+      <div class="sub">MNIST 28×28 · Conv8·5² → Pool → Conv16·5² → Pool → FC120 → Dropout → FC10 → Softmax</div>
+    </div>
+  </div>
+  <div class="status">
+    <span><i class="led" id="ledModel"></i>模型 <b id="modelName">载入中…</b></span>
+    <span><i class="led" id="ledEngine"></i>推理引擎 <b id="engineState">—</b></span>
+    <span><i class="led" id="ledTf"></i>TF.js 交叉验证 <b id="tfState">检测中…</b></span>
+    <span class="sep"></span>
+    <a class="btn" href="/cnn.html" style="text-decoration:none">🧠 层分析/机制解剖</a>
+    <a class="btn" href="/" style="text-decoration:none">⚗ 实验室</a>
+    <select class="sel" id="modelSel" title="切换模型权重"></select>
+  </div>
+</header>
+
+<main class="grid">
+
+  <!-- ============ 左栏: 输入 & 结构 ============ -->
+  <aside class="col-left">
+    <section class="panel">
+      <div class="ph"><span>① 输入面板 · 28×28 灰度</span><span class="ph-r" id="inputMeta">待写入</span></div>
+      <div class="pb">
+        <div class="pad-wrap">
+          <canvas id="pad" width="336" height="336"></canvas>
+          <div class="pad-side">
+            <canvas id="thumb" width="112" height="112"></canvas>
+            <div class="kv"><span>真值</span><b id="trueLab">—</b></div>
+            <div class="kv"><span>预测</span><b id="predLab">—</b></div>
+            <div class="kv"><span>置信度</span><b id="confVal">—</b></div>
+            <div class="kv"><span>推理耗时</span><b id="msVal">—</b></div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="btnRun">▶ 确认演示</button>
+          <button class="btn" id="btnClear">清空</button>
+          <button class="btn" id="btnSample">载入测试样本</button>
+          <label class="chk"><input type="checkbox" id="chkCenter" checked>自动居中</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><span>网络结构 / 参数量</span><span class="ph-r" id="accTag">—</span></div>
+      <div class="pb"><table class="arch" id="archTable"></table></div>
+    </section>
+  </aside>
+
+  <!-- ============ 中栏: 逐层演示 ============ -->
+  <section class="col-mid">
+    <section class="panel">
+      <div class="ph"><span>② 逐层前向演示</span><span class="ph-r" id="stageLabel">待运行 — 在左侧写一个数字后点「确认演示」</span></div>
+      <div class="pb">
+        <div class="stagebar" id="stageBar"></div>
+        <div class="viewwrap">
+          <canvas id="view" width="920" height="540"></canvas>
+          <div class="viewhint">拖动旋转 3D 特征图堆栈 · 滚轮缩放 · 点击下方步骤切换</div>
+        </div>
+        <div class="row center">
+          <button class="btn" id="btnPrev">◀ 上一步</button>
+          <button class="btn primary" id="btnPlay">▷ 自动播放</button>
+          <button class="btn" id="btnNext">下一步 ▶</button>
+          <label class="chk"><input type="checkbox" id="chk3d" checked>3D 视图</label>
+          <label class="chk"><input type="checkbox" id="chkAnim" checked>动画</label>
+        </div>
+        <div class="readout" id="readout">等待输入…</div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ============ 右栏: 公式 / 概率 / 拉格朗日 ============ -->
+  <section class="col-right">
+    <section class="panel">
+      <div class="ph"><span>③ 本步数学式 · KaTeX</span></div>
+      <div class="pb" id="formulaBox"></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><span>④ Softmax 概率分布 (和为 1)</span><span class="ph-r" id="sumTag">Σ=—</span></div>
+      <div class="pb"><div class="probs" id="probBox"></div></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><span>⑤ 拉格朗日算子分析(融合)</span><span class="ph-r" id="lagTag">—</span></div>
+      <div class="pb" id="lagBox"></div>
+    </section>
+  </section>
+</main>
+
+<footer>
+  <span>引擎: 纯 JS 前向(与训练权重同格式) · 可选 TF.js 交叉验证 · 公式 KaTeX</span>
+  <span>权重: <a href="/api/cnn/weights?model=cnn_torch.json" target="_blank">cnn_torch.json</a> · 结构: <a href="/api/cnn/arch" target="_blank">/api/cnn/arch</a> · 算子分析: <a href="/api/cnn/layers" target="_blank">/api/cnn/layers</a></span>
+  <span>训练看板: <a href="http://127.0.0.1:8020/" target="_blank">http://127.0.0.1:8020/</a>(训练时)</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+<script src="demo.js"></script>
+</body>
+</html>

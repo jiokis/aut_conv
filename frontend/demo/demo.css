@@ -1,0 +1,119 @@
+/* ============================================================
+   CNN 手写数字识别演示台 · 工业软件风格
+   ============================================================ */
+:root{
+  --bg:#0a0d11; --bg2:#0e1319; --panel:#111823; --panel2:#0d1420;
+  --line:#1e2b3c; --line2:#2a3d54; --text:#d8e3f2; --muted:#7d90a8;
+  --cyan:#37c8f0; --green:#3ddc97; --amber:#ffb347; --red:#ff6b6b;
+  --violet:#b79aff; --blue:#5b8def;
+  --mono:"JetBrains Mono","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    linear-gradient(0deg,rgba(55,200,240,.03) 1px,transparent 1px) 0 0/100% 28px,
+    linear-gradient(90deg,rgba(55,200,240,.03) 1px,transparent 1px) 0 0/28px 100%,
+    radial-gradient(1200px 600px at 80% -10%,rgba(55,200,240,.07),transparent 60%),
+    var(--bg);
+  color:var(--text); font-family:var(--ui); font-size:13px; min-height:100%;
+}
+/* ---------- 顶栏 ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:10px 18px;background:linear-gradient(180deg,#0c121b,#0a0f16);
+  border-bottom:1px solid var(--line2);box-shadow:0 6px 24px rgba(0,0,0,.5);
+}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  width:42px;height:42px;border:1px solid var(--line2);border-radius:8px;display:grid;place-items:center;
+  background:linear-gradient(135deg,rgba(55,200,240,.18),rgba(91,141,239,.12));
+  font:700 13px var(--mono);color:var(--cyan);letter-spacing:.5px;
+}
+.brand h1{font-size:16px;letter-spacing:.6px;font-weight:700}
+.brand .sub{color:var(--muted);font:11.5px var(--mono);margin-left:6px}
+.status{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-left:auto;font:11.5px var(--mono);color:var(--muted)}
+.status b{color:var(--text);font-weight:600}
+.led{width:9px;height:9px;border-radius:50%;background:#3a4a5e;display:inline-block;margin-right:5px;vertical-align:middle}
+.led.on{background:var(--green);box-shadow:0 0 9px var(--green)}
+.led.warn{background:var(--amber);box-shadow:0 0 9px var(--amber)}
+.led.off{background:#3a4a5e}
+.status .sep{width:1px;height:18px;background:var(--line2)}
+/* ---------- 控件 ---------- */
+.btn{
+  cursor:pointer;font:12px var(--mono);color:var(--text);background:#141d29;
+  border:1px solid var(--line2);border-radius:4px;padding:7px 13px;letter-spacing:.4px;
+  transition:.15s;
+}
+.btn:hover{border-color:var(--cyan);background:#17263a;color:#fff}
+.btn.primary{background:linear-gradient(180deg,#1d4f66,#164054);border-color:#2f88a8;color:#dff6ff}
+.btn.primary:hover{background:linear-gradient(180deg,#256a86,#1a4f68)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.sel{background:#141d29;color:var(--text);border:1px solid var(--line2);border-radius:4px;padding:6px 8px;font:12px var(--mono);outline:none}
+.chk{display:inline-flex;align-items:center;gap:6px;font:11.5px var(--mono);color:var(--muted);cursor:pointer}
+.chk input{accent-color:var(--cyan)}
+/* ---------- 布局 ---------- */
+.grid{display:grid;grid-template-columns:352px minmax(0,1fr) 372px;gap:12px;padding:12px;align-items:start}
+@media (max-width:1500px){.grid{grid-template-columns:330px minmax(0,1fr)}.col-right{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}}
+@media (max-width:1050px){.grid{grid-template-columns:1fr}.col-left,.col-mid,.col-right{grid-column:1}}
+.col-left,.col-mid,.col-right{display:flex;flex-direction:column;gap:12px;min-width:0}
+/* ---------- 面板 ---------- */
+.panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:6px;overflow:hidden;box-shadow:0 8px 26px rgba(0,0,0,.35)}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.015);font:11.5px var(--mono);letter-spacing:1.2px;color:var(--muted);text-transform:uppercase}
+.ph-r{text-transform:none;letter-spacing:0;color:var(--cyan)}
+.pb{padding:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.row.center{justify-content:center}
+/* ---------- 输入面板 ---------- */
+.pad-wrap{display:flex;gap:12px;align-items:flex-start}
+#pad{border:1px solid var(--line2);border-radius:6px;background:#000;cursor:crosshair;touch-action:none;image-rendering:pixelated}
+.pad-side{display:flex;flex-direction:column;gap:8px;flex:1;min-width:110px}
+#thumb{border:1px solid var(--line);border-radius:4px;background:#000;image-rendering:pixelated;width:112px;height:112px}
+.kv{display:flex;justify-content:space-between;font:11.5px var(--mono);color:var(--muted);border-bottom:1px dashed var(--line);padding-bottom:3px}
+.kv b{color:var(--text)}
+/* ---------- 结构表 ---------- */
+.arch{width:100%;border-collapse:collapse;font:11px var(--mono)}
+.arch td{border-bottom:1px solid var(--line);padding:4px 5px;vertical-align:top}
+.arch td:first-child{color:var(--muted);white-space:nowrap;width:26px}
+.arch .t{color:var(--cyan)}
+.arch .p{color:var(--muted)}
+.arch tr.hl{background:rgba(55,200,240,.07)}
+/* ---------- 演示区 ---------- */
+.stagebar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.stagebar button{font:11px var(--mono);padding:5px 9px;border-radius:3px;border:1px solid var(--line);background:#0f1722;color:var(--muted);cursor:pointer}
+.stagebar button.active{border-color:var(--cyan);color:var(--cyan);background:rgba(55,200,240,.1)}
+.stagebar button.done{color:var(--green);border-color:rgba(61,220,151,.4)}
+.viewwrap{position:relative;border:1px solid var(--line2);border-radius:6px;background:#070b10;overflow:hidden}
+#view{display:block;width:100%;height:auto}
+.viewhint{position:absolute;right:8px;bottom:6px;font:10.5px var(--mono);color:var(--muted);opacity:.8}
+.readout{margin-top:10px;font:11.5px/1.7 var(--mono);color:#9fb3cc;background:#070b10;border:1px solid var(--line);border-radius:5px;padding:8px 10px;min-height:64px;white-space:pre-wrap}
+/* ---------- 公式 ---------- */
+.formula{margin:6px 0;padding:8px 10px;background:#070b10;border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:5px;overflow-x:auto}
+.formula .cap{font:11px var(--mono);color:var(--muted);margin-bottom:4px}
+.katex{font-size:1.02em !important}
+.formula code{font:12px var(--mono);color:#cfe6ff}
+/* ---------- 概率 ---------- */
+.probs{display:flex;flex-direction:column;gap:4px}
+.prow{display:grid;grid-template-columns:20px 1fr 56px;gap:8px;align-items:center;font:11.5px var(--mono)}
+.pbar{height:12px;background:#0d1620;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,#1f5f7a,#37c8f0);width:0;transition:width .4s}
+.prow.top .pbar i{background:linear-gradient(90deg,#2f9d6b,#3ddc97)}
+.prow.top{color:var(--green)}
+/* ---------- 拉格朗日面板 ---------- */
+.lag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px}
+.lag-card{border:1px solid var(--line);border-radius:5px;background:rgba(255,255,255,.02);padding:6px;display:flex;flex-direction:column;gap:4px}
+.lag-card canvas.k{width:100%;image-rendering:pixelated;border:1px solid var(--line);border-radius:3px;background:#070b10}
+.lag-card .t{font:10.5px var(--mono);color:var(--muted);display:flex;justify-content:space-between}
+.badge{display:inline-block;font:10px var(--mono);padding:1px 6px;border-radius:9px;border:1px solid currentColor}
+.badge.g{color:var(--green)}.badge.a{color:var(--amber)}.badge.v{color:var(--violet)}.badge.c{color:var(--cyan)}.badge.m{color:var(--muted)}
+.evbar{height:8px;border-radius:4px;overflow:hidden;background:#0d1620;border:1px solid var(--line);display:flex}
+.evbar i{display:block;height:100%}
+.evbar .e{background:linear-gradient(90deg,#2f9d6b,#3ddc97)}
+.evbar .o{background:linear-gradient(90deg,#6b4fd8,#b79aff)}
+/* ---------- 页脚 ---------- */
+footer{padding:14px 18px 26px;color:var(--muted);font:11px var(--mono);display:flex;gap:18px;flex-wrap:wrap}
+footer a{color:var(--cyan);text-decoration:none}
+.toast{position:fixed;right:16px;bottom:16px;z-index:99;background:#12202e;border:1px solid var(--cyan);border-radius:5px;padding:9px 14px;font:12px var(--mono);opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none}
+.toast.show{opacity:1;transform:none}
+.toast.err{border-color:var(--red)}
