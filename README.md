@@ -23,6 +23,33 @@ bash run.sh            # 零依赖, 需要 Python 3.10+
 后端是**纯 Python 标准库** HTTP 服务(无 numpy/fastapi, 自带基 2 FFT),
 前端为原生 HTML/CSS/JS, 无任何外部 CDN/构建步骤。
 
+## 启动服务(推荐)
+
+```bash
+bash start.sh           # 启动主服务(实验室 + CNN 分析 + 演示台), 端口 8017
+bash start.sh board     # 额外启动训练进度看板(端口 8020, 输出 data/cnn_board.json)
+bash start.sh status    # 查看运行状态与监听端口
+bash start.sh stop      # 停止
+bash start.sh restart   # 重启
+```
+
+服务通过 `setsid + nohup` **完全脱离终端**(日志写入 `logs/`), 并监听 `0.0.0.0`,
+因此 Windows 浏览器可用两种地址访问(WSL 环境):
+
+| 页面 | localhost | WSL IP 备选 |
+|---|---|---|
+| 实验室(卷积核/设计空间) | http://127.0.0.1:8017/ | http://<WSL_IP>:8017/ |
+| CNN 分析(逐层/机制/规则) | http://127.0.0.1:8017/cnn.html | http://<WSL_IP>:8017/cnn.html |
+| **CNN 演示台(手写识别)** | http://127.0.0.1:8017/demo/ | http://<WSL_IP>:8017/demo/ |
+| 训练进度看板 | http://127.0.0.1:8020/ | http://<WSL_IP>:8020/ |
+
+`WSL_IP` 用 `hostname -I | awk '{print $1}'` 获取(本机当前为 `192.168.31.74`)。
+若 localhost 打不开而 WSL IP 能开, 说明 Windows 的 WSL localhost 转发未生效, 直接用 WSL IP 即可;
+两者都不通时检查 Windows 防火墙是否放行 WSL 网段。
+
+> 小提示: 训练看板默认输出到 `data/cnn_board.json`, 不会覆盖演示页使用的 `data/cnn_torch.json`。
+> 无界面训练(脚本/CI)可加 `--no-serve`。
+
 ## 功能
 
 ### 算子(卷积核)输入与生成 — 左栏

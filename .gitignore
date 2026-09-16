@@ -21,3 +21,7 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+
+# 运行日志
+logs/
+data/cnn_board.json

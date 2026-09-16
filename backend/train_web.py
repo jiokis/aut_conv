@@ -384,8 +384,13 @@ def main():
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8020)
     ap.add_argument("--out", default=os.path.join(cnn.DATA_DIR, "cnn_torch.json"))
+    ap.add_argument("--no-serve", action="store_true", help="只训练不起 Web 服务(适合脚本/CI)")
     args = ap.parse_args()
 
+    if args.no_serve:
+        print(f"[no-serve] 训练: subset={args.subset} epochs={args.epochs} batch={args.batch} → {args.out}")
+        worker(args)
+        return
     t = threading.Thread(target=worker, args=(args,), daemon=True)
     print(f"训练启动: subset={args.subset} epochs={args.epochs} batch={args.batch} "
           f"lr={args.lr} dropout={args.dropout}")
