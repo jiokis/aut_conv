@@ -158,6 +158,13 @@ class Handler(BaseHTTPRequestHandler):
                 with open(fp, "r", encoding="utf-8") as f:
                     return self._send_json({"ok": True, "data": json.load(f)})
             return self._send_json({"ok": False, "error": "mech.json 不存在, 先运行 python3 backend/mech.py"})
+        if path == "/api/cnn/modules":
+            # 模块消融/机理实验结果(backend/mech_modules.py 生成)
+            fp = os.path.join(cnn.DATA_DIR, "modules.json") if cnn else None
+            if fp and os.path.isfile(fp):
+                with open(fp, "r", encoding="utf-8") as f:
+                    return self._send_json({"ok": True, "data": json.load(f)})
+            return self._send_json({"ok": False, "error": "modules.json 不存在, 先运行 python3 backend/mech_modules.py"})
         if path == "/api/cnn/arch":
             # 网络结构说明(演示页/训练看板共用)
             try:

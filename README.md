@@ -82,6 +82,9 @@ Adam, MNIST 30k×3 轮, **测试准确率 98.0%**), 用同一套算子/拉氏量
   实测动能占比=奇部占比、Hermitian 正定仍 0/136(详见 ANALYSIS_RULES.md)。
 - **⑤ 端到端分类机制定量解剖**(backend/mech.py): 各级线性可分度(像素80.8%→Conv栈98.0%→FC1 98.8%)、
   通道×数字证据矩阵与判别力 F、末层决策方向几何/混淆结构、ReLU 稀疏门控(FC1 激活率~35%)。
+- **⑥ 模块作用机理 · 系统消融**(backend/mech_modules.py): 12 个训练期变体(去卷积/去池化/去ReLU/
+  去隐藏层/偶核约束/随机核冻结/全线性…) + 13 个推理期干预(逐层关 ReLU、事后对称投影、核打乱对照、
+  填充式遮挡、逐通道置零、显著性), 量化“每个模块到底贡献多少”。
 - **④ 定量结论 & 设计规则面板**: 受控实验(`backend/exp_rules.py` → `data/exp_rules.json`)
   实测“偶核(自伴=拉氏量可导出)约束 +0.06pp / 奇核 −0.07pp、PSD 恒 0、奇偶预算分层规律”;
   完整报告见 `ANALYSIS_RULES.md`。
@@ -160,6 +163,7 @@ python3 backend/train_web.py             # 默认 30000 样本 × 3 轮, 端口 
 | `POST /api/cnn/train` / `GET /api/cnn/train_status` | 后台训练 + 进度轮询 |
 | `GET /api/cnn/rules` | 定量实验结论(`data/exp_rules.json`, 由 `backend/exp_rules.py` 生成) |
 | `GET /api/cnn/mech` | 分类机制解剖(`data/mech.json`, 由 `backend/mech.py` 生成) |
+| `GET /api/cnn/modules` | 模块消融/机理(`data/modules.json`, 由 `backend/mech_modules.py` 生成) |
 | `GET /api/cnn/arch` | 网络结构定义(训练脚本/演示页共用) |
 | `GET /api/cnn/weights?model=x.json` | 模型权重(供演示页 JS 引擎载入) |
 | `GET /api/cnn/sample?i=N&model=x.json` | MNIST 测试样本 + 真值 + 后端预测 |
@@ -194,6 +198,7 @@ operator-lab/
 │   ├── main.py             # HTTP 服务(标准库, 静态 + JSON API)
 │   ├── exp_rules.py        # 定量实验(偶/奇约束 vs 自由): → data/exp_rules.json
 │   ├── mech.py             # 端到端分类机制量化: → data/mech.json
+│   ├── mech_modules.py     # 模块作用机理消融: → data/modules.json
 │   └── selftest.py         # 数值自检: python3 backend/selftest.py
 ├── ANALYSIS_RULES.md    # 定量结论与一般设计规则(完整报告)
 └── frontend/

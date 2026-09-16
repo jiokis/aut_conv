@@ -670,6 +670,138 @@ function renderRules(box, d) {
   <ul class="concl" style="padding:2px 16px 10px">${ruleHtml}</ul>`;
 }
 
+
+/* ================================================================
+ * ⑥ 模块作用机理(消融实验)
+ * ================================================================ */
+async function loadModules() {
+  const box = $("modBox");
+  try {
+    const r = await fetch("/api/cnn/modules").then((x) => x.json());
+    if (!r.ok) throw new Error(r.error || "no data");
+    renderModules(box, r.data);
+  } catch (e) {
+    box.innerHTML = `<div class="empty">消融实验数据缺失: ${esc(e.message)}<br>
+      <span class="small-txt">运行 <code class="p">python3 backend/mech_modules.py</code>(约 2 分钟)后刷新。</span></div>`;
+  }
+}
+
+function renderModules(box, d) {
+  const base = d.baseline ? d.baseline.test_acc : 0;
+  const pct = (x) => (x * 100).toFixed(2) + "%";
+  const dpp = (x) => (x >= 0 ? "+" : "") + x.toFixed(2) + " pp";
+  const bar = (v, mx, cls) => `<div class="tb" style="height:10px;border-radius:5px;background:rgba(120,150,210,.1);overflow:hidden">
+      <i style="display:block;height:100%;width:${Math.max(1, (v / mx) * 100)}%;background:${cls}"></i></div>`;
+
+  // —— 训练期消融 ——
+  const tr = [...(d.training || [])].sort((a, b) => b.test_acc - a.test_acc);
+  const trRows = tr.map((t) => {
+    const delta = (t.test_acc - base) * 100;
+    const cls = t.name === "base" ? "info" : delta < -0.5 ? "warn" : "";
+    return `<tr><td>${esc(t.name)}<div class="small-txt">${esc(t.note)}</div></td>
+      <td class="mono ${cls}">${pct(t.test_acc)}</td>
+      <td class="mono">${t.name === "base" ? "—" : dpp(delta)}</td>
+      <td class="mono">${t.params.toLocaleString()}</td>
+      <td class="mono">${t.secs}s</td></tr>`;
+  }).join("");
+
+  // —— 推理期消融 ——
+  const inf = d.inference || [];
+  const infRows = inf.map((t) => `<tr><td>${esc(t.name)}<div class="small-txt">${esc(t.note)}</div></td>
+      <td class="mono">${pct(t.acc)}</td>
+      <td class="mono ${t.delta_pp < -0.5 ? "warn" : ""}">${t.delta_pp === 0 ? "—" : dpp(t.delta_pp)}</td></tr>`).join("");
+
+  // —— 通道重要性 ——
+  const chHTML = (list, layer) => {
+    const mx = Math.max(0.01, ...list.map((c) => Math.abs(c.drop_pp)));
+    return `<div class="small-txt" style="margin-bottom:4px">Conv${layer} 逐通道置零的精度损失(pp, 越大越关键)</div>
+      <div style="display:grid;grid-template-columns:repeat(${layer === 1 ? 8 : 16},1fr);gap:4px;align-items:end;height:110px">
+      ${list.map((c) => `<div title="ch${c.ch} 置零后 acc=${pct(c.acc)}" style="display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+        <div style="height:${Math.max(2, (Math.max(0, c.drop_pp) / mx) * 100)}%;background:linear-gradient(180deg,#ff6b7a,#ffb347);border-radius:3px 3px 0 0"></div>
+        <div style="font:9px var(--mono);color:var(--muted);text-align:center">${c.ch}</div></div>`).join("")}</div>`;
+  };
+
+  // —— 显著性 ——
+  const sal = d.saliency || { per_class: [] };
+  const salGrid = (sal.per_class || []).map((m, i) => `<div style="text-align:center">
+      <canvas class="hm" data-sal="${i}" style="width:64px;height:64px;image-rendering:pixelated;border:1px solid var(--line);border-radius:4px"></canvas>
+      <div style="font:10px var(--mono);color:var(--muted)">${i}</div></div>`).join("");
+
+  // —— 自动解读 ——
+  const find = (arr, n) => (arr || []).find((x) => x.name === n) || {};
+  const B = base * 100;
+  const notes = [];
+  const mlp = find(d.training, "mlp_no_conv"), c1 = find(d.training, "conv1_only"),
+        nh = find(d.training, "no_hidden"), nd = find(d.training, "no_dropout"),
+        nr = find(d.training, "no_relu"), la = find(d.training, "linear_all"),
+        ap = find(d.training, "avg_pool"), sp = find(d.training, "stride_downsample"),
+        np_ = find(d.training, "no_pool"), ev = find(d.training, "even_kernels"),
+        fr = find(d.training, "frozen_random_conv");
+  if (mlp.test_acc) notes.push(`**卷积模块是主力**: 去掉全部卷积(纯 MLP)降到 ${pct(mlp.test_acc)}(${dpp((mlp.test_acc - base) * 100)}), 即两个卷积层贡献约 ${((base - mlp.test_acc) * 100).toFixed(1)} 个百分点 —— 权重共享+局部感受野带来的平移等变特征是精度来源。`);
+  if (c1.test_acc) notes.push(`**深度**: 只留一层卷积 ${pct(c1.test_acc)}(${dpp((c1.test_acc - base) * 100)}), 第二层带来的组合特征是额外增益但非必需。`);
+  if (nh.test_acc) notes.push(`**隐藏层 FC120**: 去掉后 ${pct(nh.test_acc)}(${dpp((nh.test_acc - base) * 100)}), 参数从 ${(find(d.training, "base").params || 0).toLocaleString()} 降到 ${nh.params.toLocaleString()} —— 它主要做“特征重组/去相关”, 参数效率很高。`);
+  if (nd.test_acc) notes.push(`**Dropout**: 关掉后 ${pct(nd.test_acc)}(${dpp((nd.test_acc - base) * 100)}), 在这个小网络上正则化收益有限。`);
+  if (nr.test_acc) notes.push(`**ReLU(逐层)**: 去掉所有 ReLU 仍有 ${pct(nr.test_acc)}(${dpp((nr.test_acc - base) * 100)}) —— 因为 **最大池化本身已提供非线性**; 再叠加平均池化近似线性系统后为 ${la.test_acc ? pct(la.test_acc) : "—"}${la.test_acc ? `(${dpp((la.test_acc - base) * 100)})` : ""}, 这才是“非线性”的总贡献。`);
+  if (ap.test_acc) notes.push(`**池化方式**: 最大池化 → 平均池化 ${pct(ap.test_acc)}(${dpp((ap.test_acc - base) * 100)}), 说明“取最强响应”的稀疏选择比平均更契合笔画特征; 换成学习式步长卷积 ${sp.test_acc ? pct(sp.test_acc) : "—"}${sp.test_acc ? `(${dpp((sp.test_acc - base) * 100)})` : ""}。`);
+  if (np_ && np_.test_acc) notes.push(`**降采样必要性**: 完全不做池化 ${pct(np_.test_acc)}(${dpp((np_.test_acc - base) * 100)}), 参数 ${np_.params.toLocaleString()} —— 池化用极少参数换来了感受野扩张与平移鲁棒。`);
+  if (ev.test_acc) notes.push(`**自伴约束(拉氏量可导出)**: 每步把卷积核投影为偶核 ${pct(ev.test_acc)}(${dpp((ev.test_acc - base) * 100)}) —— 在这个笔画类任务上约束几乎免费(对应前面 R1 规则)。`);
+  if (fr.test_acc) notes.push(`**卷积核必须学习吗**: 冻结为随机核、只训分类头 ${pct(fr.test_acc)}(${dpp((fr.test_acc - base) * 100)}), 与随机特征方法的预期一致 —— 卷积核确实学到了任务相关结构。`);
+  const r1 = find(d.inference, "relu_off@conv1"), r2 = find(d.inference, "relu_off@conv2"),
+        rf = find(d.inference, "relu_off@fc1"), sh = find(d.inference, "shuffle_kernels"),
+        ei = find(d.inference, "even_project_infer");
+  notes.push(`**推理期（冻结权重）**: 关 ReLU → conv1 ${r1.delta_pp ?? "—"}pp / conv2 ${r2.delta_pp ?? "—"}pp / fc1 ${rf.delta_pp ?? "—"}pp;` +
+    ` 卷积核投影为偶核 ${ei.delta_pp ?? "—"}pp; 核内像素打乱(对照) ${sh.delta_pp ?? "—"}pp —— 打乱会造成大幅下降, 证明空间结构(而非仅数值分布)才是有效信息。`);
+  // 遮挡/显著性: 正证据 vs 负证据
+  const oc = (n) => find(d.inference, n);
+  const oC = oc("occlusion_center"), oB = oc("occlusion_border"),
+        oCo = oc("occlusion_center_ones"), oBo = oc("occlusion_border_ones"),
+        oR = oc("occlusion_rows"), oCl = oc("occlusion_cols");
+  if (oC.delta_pp !== undefined) {
+    notes.push(`**遮挡(置零)**: 中心 8×8 ${dpp(oC.delta_pp)}, 中间 12 行 ${dpp(oR.delta_pp)}, 中间 12 列 ${dpp(oCl.delta_pp)}, 四周 3px ${dpp(oB.delta_pp)} —— 置零边缘几乎无影响, 因为那里本来就是背景(空操作)。`);
+  }
+  if (oBo.delta_pp !== undefined) {
+    notes.push(`**负证据(关键发现)**: 把四周 3px 直接<b>填满墨迹</b>后精度 ${pct(oBo.acc)}(${dpp(oBo.delta_pp)}), 比破坏中心的 ${dpp(oCo.delta_pp)} 还严重 —— 网络不仅看“笔画在哪”, 更强依赖“<b>边缘必须是空白</b>”这一负证据。这正是显著性图里边缘能量占比 ${(sal.border_ratio * 100).toFixed(0)}% 的原因: 梯度大 ≠ 可遮挡(置零无操作), 必须配合“填充式遮挡”才能读出真实依赖。`);
+  }
+  if (ei.delta_pp !== undefined && ev.delta_pp !== undefined) {
+    notes.push(`**训练 vs 推理的差别**: 训练时把核约束为偶核几乎不掉点(${dpp(ev.delta_pp)}), 但在<b>已训练好的模型上</b>直接把核投影为偶核却掉 ${Math.abs(ei.delta_pp).toFixed(1)}pp —— 说明偶核本身足够表达, 只要训练时允许网络去适配这个约束; 事后投影破坏的是已学到的相位/方向结构。`);
+  }
+  const ch2 = (d.channel_importance && d.channel_importance.conv2) || [];
+  const top2 = [...ch2].sort((a, b) => b.drop_pp - a.drop_pp).slice(0, 3);
+  if (top2.length) notes.push(`**通道分工**: Conv2 中最关键的通道是 ${top2.map((c) => `ch${c.ch}(${c.drop_pp > 0 ? "−" : "+"}${Math.abs(c.drop_pp)}pp)`).join("、")} —— 少数通道承载了大部分判别信息(与页⑤“共享基+少数选择通道”一致)。`);
+  if (sal.center_ratio !== undefined) notes.push(`**信息读取位置**: 真类梯度显著性中, 中心区占 ${(sal.center_ratio * 100).toFixed(1)}%、四周边缘占 ${(sal.border_ratio * 100).toFixed(1)}% —— 分类主要依赖笔画中心区域, 与质心预处理一致。`);
+
+  box.innerHTML = `
+  <div class="small-txt" style="padding:12px 16px 2px">实验设置: MNIST ${(d.config || {}).subset} 训练样本 × ${(d.config || {}).epochs} 轮 · batch ${(d.config || {}).batch} · 测试 ${(d.config || {}).test_n} 张 · seed ${(d.config || {}).seed} · 单变量对照(每次只改一个模块)。基线 <b class="ok">${pct(base)}</b>。</div>
+
+  <div style="padding:10px 16px 2px"><b>A. 训练期消融(每个变体独立重训, 按测试精度排序)</b></div>
+  <div style="overflow-x:auto;padding:0 16px 10px"><table class="sumt">
+    <tr><th>模块改动</th><th>测试准确率</th><th>Δ vs 基线</th><th>参数量</th><th>耗时</th></tr>
+    ${trRows}</table></div>
+
+  <div style="padding:4px 16px 2px"><b>B. 推理期干预(冻结同一份基线权重, 不改训练)</b></div>
+  <div style="overflow-x:auto;padding:0 16px 10px"><table class="sumt">
+    <tr><th>干预</th><th>测试准确率</th><th>Δ vs 基线</th></tr>${infRows}</table></div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;padding:0 16px 10px">
+    <div>${chHTML((d.channel_importance || {}).conv1 || [], 1)}</div>
+    <div>${chHTML((d.channel_importance || {}).conv2 || [], 2)}</div>
+  </div>
+
+  <div style="padding:4px 16px 10px"><b>C. 显著性(真类 logit 对输入像素的梯度, 按类平均)</b>
+    <span class="small-txt">中心区能量占比 ${sal.center_ratio !== undefined ? (sal.center_ratio * 100).toFixed(1) + "%" : "—"} · 边缘占比 ${sal.border_ratio !== undefined ? (sal.border_ratio * 100).toFixed(1) + "%" : "—"}</span></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 12px">${salGrid}</div>
+
+  <div style="padding:4px 16px 12px"><b>D. 机理结论(由以上数字自动生成)</b>
+    <ul class="concl" style="margin-top:8px">${notes.map((n) => `<li class="info"><span class="ic">✱</span><span>${n.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</span></li>`).join("")}</ul>
+    <div class="small-txt" style="margin-top:6px">注: 单 seed、30k×3 轮预算下的对照; 结论为“该预算下的模块贡献排序”, 不是绝对最优值。最大池化提供非线性这一点解释了“去掉 ReLU 几乎不掉点”。</div>
+  </div>`;
+  // 画显著性热图
+  (sal.per_class || []).forEach((m, i) => {
+    const cv = box.querySelector(`canvas[data-sal="${i}"]`);
+    if (cv) drawHeat(cv, m);
+  });
+}
+
 /* ================================================================
  * 启动
  * ================================================================ */
@@ -704,5 +836,6 @@ async function boot() {
   await loadLayers();
   await loadRules();
   await loadMech();
+  await loadModules();
 }
 document.addEventListener("DOMContentLoaded", boot);
